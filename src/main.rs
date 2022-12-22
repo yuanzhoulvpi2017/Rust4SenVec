@@ -2,10 +2,10 @@ use actix_web::{
     body::BoxBody, http::header::ContentType, post, web, App, HttpRequest, HttpResponse,
     HttpServer, Responder,
 };
-
+use tokio;
 use serde::Deserialize;
 use serde::Serialize;
-use std::sync::Arc;
+use std::sync::{Mutex, Arc};
 
 use tch::Tensor;
 use tch::{jit, CModule};
@@ -41,14 +41,14 @@ impl Responder for ModelOutput {
 #[derive(Clone)]
 struct InferModel {
     model_name: String,
-    model: Arc<CModule>,
-    tokenizer: Arc<Tokenizer>,
+    model: Arc<Mutex<CModule>>,
+    tokenizer: Arc<Mutex<Tokenizer>>,
 }
 
 impl InferModel {
     fn new(tokenizer_name: String, model_name: String) -> Self {
-        let tokenizer = Arc::new(Tokenizer::from_pretrained(tokenizer_name.clone(), None).unwrap());
-        let model = Arc::new(jit::CModule::load(model_name.clone()).unwrap());
+        let tokenizer = Arc::new(Mutex::new(Tokenizer::from_pretrained(tokenizer_name.clone(), None).unwrap()));
+        let model = Arc::new(Mutex::new(jit::CModule::load(model_name.clone()).unwrap()));
 
         Self {
             model_name: tokenizer_name.clone(),
@@ -58,7 +58,7 @@ impl InferModel {
     }
 
     fn infer(&self, user_sentence: &String) -> ModelOutput {
-        let encoding = self.tokenizer.encode(user_sentence.clone(), false).unwrap();
+        let encoding = self.tokenizer.clone().lock().unwrap().encode(user_sentence.clone(), false).unwrap();
 
         let encoding_ids_temp = encoding
             .get_ids()
@@ -74,7 +74,7 @@ impl InferModel {
         let attention_mask = Tensor::of_slice2(&[attention_mask_temp]);
         let input_ids = Tensor::of_slice2(&[encoding_ids_temp]);
 
-        let result = self.model.forward_ts(&[input_ids, attention_mask]).unwrap();
+        let result = self.model.clone().lock().unwrap().forward_ts(&[input_ids, attention_mask]).unwrap();
         let result_vector = Vec::<f32>::from(result);
 
         ModelOutput {
@@ -104,8 +104,12 @@ async fn index(
     model_input: web::Json<ModelInput>,
     appdata: web::Data<InferModel>,
 ) -> impl Responder {
-    let appdata = appdata.clone();
-    let result = appdata.infer(&model_input.sentence);
+    // let appdata = appdata.clone();
+
+    let result = tokio::task::spawn_blocking(move || {
+        appdata.infer(&model_input.sentence)
+    }).await.unwrap();
+    // let result = appdata.infer(&model_input.sentence);
     result
 
 }
@@ -117,9 +121,11 @@ async fn main() -> std::io::Result<()> {
         "/Users/huzheng/PycharmProjects/Rust4SenVec/nlp_model/traced_bert.pt".to_string(),
     );
 
+    let appdata = web::Data::new(appdata.clone());
+
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(appdata.clone()))
+            .app_data(web::Data::clone(&appdata.clone()))
             .service(index)
     })
     .bind(("127.0.0.1", 8080))?
