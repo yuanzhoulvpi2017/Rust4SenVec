@@ -48,6 +48,7 @@ async fn index(
     let model = appdata.model.clone();
     let tokenizer = appdata.tokenizer.clone();
 
+
     let user_sentence: &String = &model_input.sentence;
     let sentence_str = user_sentence.clone();
 
