@@ -1,8 +1,9 @@
+use actix_web::get;
 use actix_web::{
     body::BoxBody, http::header::ContentType, post, web, App, HttpRequest, HttpResponse,
     HttpServer, Responder,
 };
-use tokio;
+// use tokio;
 use serde::Deserialize;
 use serde::Serialize;
 use std::sync::{Mutex, Arc};
@@ -52,8 +53,8 @@ impl InferModel {
 
         Self {
             model_name: tokenizer_name.clone(),
-            model: model,
-            tokenizer: tokenizer,
+            model,
+            tokenizer,
         }
     }
 
@@ -98,6 +99,20 @@ impl InferModel {
 // }
 
 
+#[get("/nlpinfer2/{sentence}")]
+async fn index2(
+    model_input: web::Path<(String, )>,
+    appdata: web::Data<InferModel>,
+) -> impl Responder {
+    // let appdata = appdata.clone();
+
+    // let result = tokio::task::spawn_blocking(move || {
+    //     appdata.infer(&model_input.sentence)
+    // }).await.unwrap();
+    let result = appdata.infer(&model_input.into_inner().0);
+    result
+
+}
 
 #[post("/nlpinfer")]
 async fn index(
@@ -106,10 +121,10 @@ async fn index(
 ) -> impl Responder {
     // let appdata = appdata.clone();
 
-    let result = tokio::task::spawn_blocking(move || {
-        appdata.infer(&model_input.sentence)
-    }).await.unwrap();
-    // let result = appdata.infer(&model_input.sentence);
+    // let result = tokio::task::spawn_blocking(move || {
+    //     appdata.infer(&model_input.sentence)
+    // }).await.unwrap();
+    let result = appdata.infer(&model_input.sentence);
     result
 
 }
@@ -127,7 +142,9 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::clone(&appdata.clone()))
             .service(index)
+            .service(index2)
     })
+    .workers(4)
     .bind(("127.0.0.1", 8080))?
     .run()
     .await
