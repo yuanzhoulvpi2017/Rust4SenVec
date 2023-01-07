@@ -75,7 +75,7 @@ sentence embedding，或者叫sentence2vector，本质上是将文本转换成�
 
 ## 小结
 在上面三个步骤中，我们思考rust语言对应的解决办法。
-1. 第一步的问题，通过`tokenizer`库来解决了。
+1. 第一步的问题，通过`tokenizer`库来解决了。[https://docs.rs/tokenizers/latest/tokenizers/](https://docs.rs/tokenizers/latest/tokenizers/)
 2. 第三步的问题，解决方法太多了。随便挑。
 
 那么第二步里面的模型推理怎么解决？
