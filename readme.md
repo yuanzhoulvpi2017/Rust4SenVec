@@ -302,6 +302,9 @@ fn main() {
 
 这个真没办法比较，而且说出来很容易被一些Rust极端脑残粉攻击。只能说哪个好用用哪个~
 
+# 更多
+1. 具体细节都会定时更新，可以查看这个文章[https://zhuanlan.zhihu.com/p/589444069](https://zhuanlan.zhihu.com/p/589444069)
+2. 或者直接关注我[https://www.zhihu.com/people/fa-fa-1-94](https://www.zhihu.com/people/fa-fa-1-94)
 
 
 
